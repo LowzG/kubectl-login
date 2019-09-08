@@ -1,0 +1,24 @@
+vault_servers:
+  vault_server1:
+    address: https://vaultserver1.domain.net:443
+    vault_ca_path: /etc/ssl/certs/vaultserver1-ca.pem
+    secrets_path: kv/KubeCluster1
+    secrets:
+      oidc_client_id: oidc_client_id
+      oidc_client_secret: oidc_client_secret
+      cluster_ca: kube_ca_pem
+  vault-company-prod:
+    address: https://vault.company.net:443
+    vault_ca_path: /etc/ssl/certs/vault-ca.pem
+    secrets_path: kv/Kubernetes
+    secrets:
+      oidc_client_id: oidc_client_id
+      oidc_client_secret: oidc_client_secret
+      cluster_ca: kube_ca_pem
+contexts:
+  Development:
+    cluster_address: https://node1.dev.company.net:6443
+    vault_server: vault_server1
+  Kube_Prod:
+    cluster_address: https://kube-master.company.net:6443
+    vault_server: vault-company-prod
