@@ -12,6 +12,7 @@ from flask import Flask, request, redirect, session
 from requests_oauthlib import OAuth2Session
 from getpass import getpass
 from hvac import Client as vault
+from kubectl_login import config
 
 redirect_uri = 'http://localhost:5000/oidc_callback'
 issuer_url = 'https://openid-connect.onelogin.com/oidc'
@@ -48,20 +49,6 @@ def get_args(supported_contexts):
     return(args)
 
 
-def get_config():
-    """Load configuration file."""
-    repo_url = 'https://github.com/LowzG/kubectl-login'
-    configfile_path = os.path.expanduser('~/.kubectl-login/config.yaml')
-    if not os.path.exists(configfile_path):
-        print(f"Config file not found. Please write config file at {configfile_path}")
-        print(f"For more information visit {repo_url}")
-        sys.exit()
-    with open(os.path.expanduser(configfile_path)) as configfile:
-        config = yaml.load(configfile, Loader=yaml.FullLoader)
-
-    return config
-
-
 def retreive_oidc_secrets(current_context, config):
     """Retreive OIDC ClientID and Client Secret from Vault."""
     secrets = {}
@@ -88,7 +75,7 @@ def retreive_oidc_secrets(current_context, config):
     client = vault(verify=vault_ca_path, token=token)
 
     if not client.is_authenticated():
-        print("Authentication to Vault is required")
+        print(f"Authentication to {vault_address} is required")
         client.auth.ldap.login(username=input('Username: '),
                                password=getpass("Password (will be hidden): "))
         with open(os.path.expanduser(token_path), 'w') as token_file:
@@ -132,8 +119,12 @@ def new_kubeconfig(contexts, config, username):
                       'users': [{'name': username, 'user': {'token': 'token'}}]}
 
     for context in contexts:
-        secrets = retreive_oidc_secrets(context, config)
-        cluster_ca = secrets['cluster_ca']
+        if secrets_source == 'LOCAL':
+            secrets = secrets = config['contexts'][current_context]['secrets']
+            cluster_ca = secrets['cluster_ca']
+        else:
+            secrets = retreive_oidc_secrets(context, config)
+            cluster_ca = secrets['cluster_ca']
         context_dict = new_context(context, cluster_ca, config, username)
         newconfig_dict['clusters'].append(context_dict['context_cluster'])
         newconfig_dict['contexts'].append(context_dict['context'])
@@ -273,11 +264,13 @@ def main():
     global cluster_ca
     global client_id
     global client_secret
+    global secrets_source
 
-    config = get_config()
+    config = config.get_config()
     supported_contexts = []
     for context in config['contexts']:
         supported_contexts.append(context)
+    secrets_source = config['settings']['secrets_source'].upper()
 
     args = get_args(supported_contexts)
 
@@ -302,7 +295,11 @@ def main():
 
     print(f"Currently working on the {current_context} context.")
 
-    secrets = retreive_oidc_secrets(current_context, config)
+    if secrets_source == 'LOCAL':
+        secrets = config['contexts'][current_context]['secrets']
+    else:
+        secrets = retreive_oidc_secrets(current_context, config)
+
     cluster_ca = secrets['cluster_ca']
     client_id = secrets['oidc_client_id']
     client_secret = secrets['oidc_client_secret']
