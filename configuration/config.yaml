@@ -1,3 +1,5 @@
+settings:
+  secrets_source: Vault
 vault_servers:
   vault_server1:
     address: https://vaultserver1.domain.net:443

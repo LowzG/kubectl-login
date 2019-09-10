@@ -21,6 +21,10 @@ kubectl-login is a kubectl plugin that authenticates the user with OneLogin and 
 git clone https://github.com/LowzG/kubectl-login.git && pip3 install ./kubectl-login
 ```
 
+Notes:
+- PIP will place the executable in $HOME/.local/bin so make sure that this directory is in your PATH.
+- This tool requires a config file placed in $HOME/.kubectl-login/config.yaml. I have included a sample config [HERE](configuration/config.yaml) to get you started.
+
 ## Usage
 
 If  you need to build a new kubeconfig file:
