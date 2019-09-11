@@ -21,6 +21,8 @@ contexts:
   Development:
     cluster_address: https://node1.dev.company.net:6443
     vault_server: vault_server1
+    dashboard_url: https://dashboard.dev.company.net
   Kube_Prod:
     cluster_address: https://kube-master.company.net:6443
     vault_server: vault-company-prod
+    dashboard_url: https://dashboard.prod.company.net
