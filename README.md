@@ -27,13 +27,20 @@ Notes:
 
 ## Usage
 
+For all the options below that have [ContextName], if you don't pass the context you will be presented with options from your config file.
+Alternatively you can pass the context via --context to any of those options if you prefer.
+
 If  you need to build a new kubeconfig file:
 ```bash
-kubectl login --new-config
+kubectl login --new-config [ContextName]
 ```
-If  you need to add/switch to a new context:
+If  you need to add/switch to/select a new context:
 ```bash
-kubectl login --context NameOfContext
+kubectl login --context [ContextName]
+```
+To open the Kubernetes Dashboard for selected context:
+```bash
+kubectl login --board [ContextName]
 ```
 Otherwise:
 ```bash
