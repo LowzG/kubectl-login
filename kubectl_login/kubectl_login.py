@@ -14,6 +14,8 @@ from getpass import getpass
 from hvac import Client as vault
 from kubectl_login import config
 
+secrets_source = 'VAULT'
+app_url = 'http://localhost:5000'
 redirect_uri = 'http://localhost:5000/oidc_callback'
 issuer_url = 'https://openid-connect.onelogin.com/oidc'
 auth_url = f'{issuer_url}/auth'
@@ -39,11 +41,15 @@ def get_args(supported_contexts):
                                      "plugin used to provide kubeconfig "
                                      "authentication configurations for access"
                                      " to Kubernetes clusters.")
-    parser.add_argument('--new-config', action="store_true",
-                        default=False, help="Build a new kubeconfig")
-    parser.add_argument('--context', '-c', metavar='ContextName',
-                        choices=supported_contexts,
-                        help="Switch to a different context")
+    parser.add_argument('--new-config', '-nc', nargs='?', const='list_contexts',
+                        metavar='ContextName', help="Build a new kubeconfig")
+    parser.add_argument('--context', '-c', nargs='?', const='list_contexts',
+                        metavar='ContextName',
+                        help=f"Options: {supported_contexts}")
+    parser.add_argument('--board', '-b', nargs='?', const='list_contexts',
+                        metavar='ContextName',
+                        help="Opens the Kubernetes Dashboard for selected "
+                        "context")
     args = parser.parse_args()
 
     return(args)
@@ -188,9 +194,8 @@ def update_kubeconfig(username, id_token, kubeconfig, current_context, # noqa: C
         yaml.dump(kubeconfig, file, default_flow_style=False)
 
 
-def open_browser():
+def open_browser(url=app_url):
     """Open webbrowser tab to Flask app site."""
-    url = 'http://localhost:5000'
     webbrowser.open_new(url)
 
 
@@ -270,42 +275,67 @@ def main():
     supported_contexts = []
     for context in config['contexts']:
         supported_contexts.append(context)
-    secrets_source = config['settings']['secrets_source'].upper()
+
+    try:
+        settings = config['settings']
+        secrets_source = settings['secrets_source'].upper()
+    except KeyError:
+        pass
 
     args = get_args(supported_contexts)
 
-    current_context = ''
     if args.context:
         current_context = args.context
-        kubeconfig = get_kubeconfig()
+    elif args.new_config:
+        current_context = args.new_config
+    elif args.board:
+        current_context = args.board
     else:
-        if args.new_config:
-            print(supported_contexts)
-            while current_context not in supported_contexts:
-                current_context = input("Select a context from the "
-                                        "options above: ")
-        else:
+        current_context = ''
+
+    select_context = 'Select a context from the options above: '
+    if not args.board:
+        if len(sys.argv) == 1:
             kubeconfig = get_kubeconfig()
             current_context = kubeconfig['current-context']
             if current_context not in supported_contexts:
                 print(supported_contexts)
                 while current_context not in supported_contexts:
-                    current_context = input("Select a context from the "
-                                            "options above: ")
+                    current_context = input(select_context)
+        else:
+            if current_context not in supported_contexts:
+                print(supported_contexts)
+                while current_context not in supported_contexts:
+                    current_context = input(select_context)
+            if not args.new_config:
+                kubeconfig = get_kubeconfig()
 
-    print(f"Currently working on the {current_context} context.")
+        print(f"Currently working on the {current_context} context.")
 
-    if secrets_source == 'LOCAL':
-        secrets = config['contexts'][current_context]['secrets']
+        if secrets_source == 'LOCAL':
+            secrets = config['contexts'][current_context]['secrets']
+        else:
+            secrets = retreive_oidc_secrets(current_context, config)
+
+        cluster_ca = secrets['cluster_ca']
+        client_id = secrets['oidc_client_id']
+        client_secret = secrets['oidc_client_secret']
+
+        Timer(.5, open_browser).start()
+        app.run(debug=False)
+
     else:
-        secrets = retreive_oidc_secrets(current_context, config)
-
-    cluster_ca = secrets['cluster_ca']
-    client_id = secrets['oidc_client_id']
-    client_secret = secrets['oidc_client_secret']
-
-    Timer(.5, open_browser).start()
-    app.run(debug=False)
+        if current_context not in supported_contexts:
+            print(supported_contexts)
+            while current_context not in supported_contexts:
+                current_context = input(select_context)
+        try:
+            dash_url = config['contexts'][current_context]['dashboard_url']
+            open_browser(url=dash_url)
+        except KeyError:
+            print(f"ERROR: No Dashboard URL provided for the {current_context}"
+                  " context in ~/.kubectl-login/config.yaml")
+            sys.exit()
 
 
 if __name__ == '__main__':
