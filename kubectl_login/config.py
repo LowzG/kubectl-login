@@ -4,7 +4,9 @@ import yaml
 import os
 import sys
 
-configfile_path = os.path.expanduser('~/.kubectl-login/config.yaml')
+config_path = os.path.expanduser('~/.kubectl-login/')
+config_file = f'{config_path}config.yaml'
+
 
 def yes_no(question):
     """Ask question via user input and return True False."""
@@ -119,26 +121,25 @@ def build_config():
             config['contexts'].update({context['name']: context['dict']})
             cont = yes_no('Would you like to add another context?')
 
-    os.makedirs(os.path.dirname(configfile_path), exist_ok=True)
-
-    with open(configfile_path, 'w+') as configfile:
+    with open(config_file, 'w+') as configfile:
         yaml.dump(config, configfile, default_flow_style=False, sort_keys=False)
 
 
 def get_config():
     """Load configuration file."""
     wiki_url = 'https://github.com/LowzG/kubectl-login'
-    if not os.path.exists(configfile_path):
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    if not os.path.exists(config_file):
         print("Warning: The kubectl-login config file was not found.")
         print(f"It is recommended that you visit {wiki_url} to see some "
               "sample config files and write your own, then save it in "
-              f"{configfile_path}")
+              f"{config_file}")
         if yes_no("Would you like to use the CLI and be assisted in writing "
                   "one instead?"):
             build_config()
         else:
             sys.exit()
-    with open(os.path.expanduser(configfile_path)) as configfile:
+    with open(config_file) as configfile:
         config = yaml.load(configfile, Loader=yaml.FullLoader)
 
     return config
