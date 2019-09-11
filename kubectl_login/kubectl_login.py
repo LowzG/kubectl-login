@@ -16,7 +16,7 @@ from kubectl_login import config
 
 secrets_source = 'VAULT'
 app_url = 'http://localhost:5000'
-redirect_uri = 'http://localhost:5000/oidc_callback'
+redirect_uri = f'{app_url}/oidc_callback'
 issuer_url = 'https://openid-connect.onelogin.com/oidc'
 auth_url = f'{issuer_url}/auth'
 token_url = f'{issuer_url}/token'
